@@ -1,0 +1,46 @@
+# .NET build outputs
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+out/
+publish/
+TestResults/
+
+# Test and coverage
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+
+# NuGet and package outputs
+*.nupkg
+*.snupkg
+packages/
+
+# Visual Studio
+.vs/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / ReSharper
+.idea/
+_ReSharper*/
+*.DotSettings.user
+
+# VS Code
+.vscode/
+
+# Logs and temp
+*.log
+*.tmp
+*.temp
+
+# OS-specific
+.DS_Store
+Thumbs.db
+Desktop.ini

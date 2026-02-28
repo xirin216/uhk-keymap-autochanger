@@ -1,0 +1,33 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UhkKeymapAutochanger.Core", "src\UhkKeymapAutochanger.Core\UhkKeymapAutochanger.Core.csproj", "{C1464C85-8E45-4A2F-8A85-3D26DB57618E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UhkKeymapAutochanger", "src\UhkKeymapAutochanger\UhkKeymapAutochanger.csproj", "{3103DF97-45ED-4CCC-9C1E-11CE4AF6A2FA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UhkKeymapAutochanger.Tests", "tests\UhkKeymapAutochanger.Tests\UhkKeymapAutochanger.Tests.csproj", "{7133C4DD-4B24-4B2F-BAB4-45F4A4A9F44A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C1464C85-8E45-4A2F-8A85-3D26DB57618E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1464C85-8E45-4A2F-8A85-3D26DB57618E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1464C85-8E45-4A2F-8A85-3D26DB57618E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1464C85-8E45-4A2F-8A85-3D26DB57618E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3103DF97-45ED-4CCC-9C1E-11CE4AF6A2FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3103DF97-45ED-4CCC-9C1E-11CE4AF6A2FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3103DF97-45ED-4CCC-9C1E-11CE4AF6A2FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3103DF97-45ED-4CCC-9C1E-11CE4AF6A2FA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7133C4DD-4B24-4B2F-BAB4-45F4A4A9F44A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7133C4DD-4B24-4B2F-BAB4-45F4A4A9F44A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7133C4DD-4B24-4B2F-BAB4-45F4A4A9F44A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7133C4DD-4B24-4B2F-BAB4-45F4A4A9F44A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
