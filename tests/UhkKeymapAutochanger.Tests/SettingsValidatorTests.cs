@@ -71,7 +71,7 @@ public sealed class SettingsValidatorTests
     }
 
     [Fact]
-    public void ShouldNormalizeProcessNamesAndKeymaps()
+    public void ShouldNormalizeProcessNamesKeymapsAndDefaultLayer()
     {
         var config = new AppConfig
         {
@@ -84,6 +84,7 @@ public sealed class SettingsValidatorTests
                 {
                     ProcessName = " Code ",
                     Keymap = " dev ",
+                    Layer = " ",
                 },
             },
         };
@@ -95,5 +96,56 @@ public sealed class SettingsValidatorTests
         Assert.Single(result.NormalizedConfig.Rules);
         Assert.Equal("Code.exe", result.NormalizedConfig.Rules[0].ProcessName);
         Assert.Equal("DEV", result.NormalizedConfig.Rules[0].Keymap);
+        Assert.Equal(SettingsValidator.DefaultLayer, result.NormalizedConfig.Rules[0].Layer);
+    }
+
+    [Fact]
+    public void ShouldNormalizeLayerNames()
+    {
+        var config = new AppConfig
+        {
+            DefaultKeymap = "DEF",
+            PollIntervalMs = 250,
+            StartWithWindows = true,
+            Rules = new List<ProcessRule>
+            {
+                new()
+                {
+                    ProcessName = "Code",
+                    Keymap = "DEV",
+                    Layer = " Fn ",
+                },
+            },
+        };
+
+        var result = SettingsValidator.Validate(config);
+
+        Assert.True(result.IsValid);
+        Assert.Equal("fn", result.NormalizedConfig.Rules[0].Layer);
+    }
+
+    [Fact]
+    public void ShouldRejectInvalidLayerName()
+    {
+        var config = new AppConfig
+        {
+            DefaultKeymap = "DEF",
+            PollIntervalMs = 250,
+            StartWithWindows = true,
+            Rules = new List<ProcessRule>
+            {
+                new()
+                {
+                    ProcessName = "Code.exe",
+                    Keymap = "DEV",
+                    Layer = "gaming",
+                },
+            },
+        };
+
+        var result = SettingsValidator.Validate(config);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.Contains("rules[0].layer", StringComparison.OrdinalIgnoreCase));
     }
 }

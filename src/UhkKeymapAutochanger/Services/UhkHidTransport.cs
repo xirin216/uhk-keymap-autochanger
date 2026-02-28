@@ -17,6 +17,7 @@ internal sealed class UhkHidTransport : IKeymapTransport, IDisposable
     private const ushort CurrentUsagePage = 0xFF00;
     private const ushort CurrentUsage = 0x0001;
     private const byte SwitchKeymapCommand = 0x11;
+    private const byte ExecMacroCommand = 0x14;
     private const int DefaultReportLength = 65;
 
     private static readonly HashSet<ushort> SupportedProductIds = new()
@@ -62,6 +63,54 @@ internal sealed class UhkHidTransport : IKeymapTransport, IDisposable
             throw new ArgumentException("keymapAbbreviation is too long.", nameof(keymapAbbreviation));
         }
 
+        return SendCommandAsync(
+            SwitchKeymapCommand,
+            keymapBytes,
+            "Failed to send keymap switch HID command.");
+    }
+
+    public Task ExecuteMacroCommandAsync(string command, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var normalizedCommand = (command ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedCommand))
+        {
+            throw new ArgumentException("command is required.", nameof(command));
+        }
+
+        var commandBytes = Encoding.ASCII.GetBytes(normalizedCommand);
+        if (commandBytes.Length != normalizedCommand.Length)
+        {
+            throw new ArgumentException("command must be ASCII only.", nameof(command));
+        }
+
+        if (commandBytes.Length > byte.MaxValue)
+        {
+            throw new ArgumentException("command is too long.", nameof(command));
+        }
+
+        return SendCommandAsync(
+            ExecMacroCommand,
+            commandBytes,
+            "Failed to send macro command HID command.");
+    }
+
+    public void Dispose()
+    {
+        lock (_sync)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+        }
+    }
+
+    private Task SendCommandAsync(byte commandId, byte[] payloadBytes, string failureMessage)
+    {
         lock (_sync)
         {
             ThrowIfDisposed();
@@ -80,31 +129,18 @@ internal sealed class UhkHidTransport : IKeymapTransport, IDisposable
                 }
 
                 using var stream = OpenDeviceStream(candidate.DevicePath, candidate.OutputReportLength);
-                WriteSwitchKeymapReportLocked(stream, candidate.OutputReportLength, keymapBytes);
+                WriteCommandReportLocked(stream, candidate.OutputReportLength, commandId, payloadBytes);
                 _nextReconnectAttemptUtc = DateTime.MinValue;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 _logger.Log($"HID write failed: {ex.Message}");
                 _nextReconnectAttemptUtc = DateTime.UtcNow.Add(_reconnectInterval);
-                throw new IOException("Failed to send keymap switch HID command.", ex);
+                throw new IOException(failureMessage, ex);
             }
         }
 
         return Task.CompletedTask;
-    }
-
-    public void Dispose()
-    {
-        lock (_sync)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            _disposed = true;
-        }
     }
 
     private static FileStream OpenDeviceStream(string devicePath, int outputReportLength)
@@ -137,15 +173,15 @@ internal sealed class UhkHidTransport : IKeymapTransport, IDisposable
         }
     }
 
-    private void WriteSwitchKeymapReportLocked(FileStream stream, int outputReportLength, byte[] keymapBytes)
+    private void WriteCommandReportLocked(FileStream stream, int outputReportLength, byte commandId, byte[] payloadBytes)
     {
         var safeOutputLength = outputReportLength > 0 ? outputReportLength : DefaultReportLength;
-        var reportLength = Math.Max(safeOutputLength, keymapBytes.Length + 3);
+        var reportLength = Math.Max(safeOutputLength, payloadBytes.Length + 3);
         var report = new byte[reportLength];
         report[0] = _reportId;
-        report[1] = SwitchKeymapCommand;
-        report[2] = (byte)keymapBytes.Length;
-        Array.Copy(keymapBytes, 0, report, 3, keymapBytes.Length);
+        report[1] = commandId;
+        report[2] = (byte)payloadBytes.Length;
+        Array.Copy(payloadBytes, 0, report, 3, payloadBytes.Length);
 
         stream.Write(report, 0, report.Length);
         stream.Flush();

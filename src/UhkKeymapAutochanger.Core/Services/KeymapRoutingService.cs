@@ -7,9 +7,9 @@ namespace UhkKeymapAutochanger.Core.Services;
 public sealed class KeymapRoutingService
 {
     private readonly object _sync = new();
-    private Dictionary<string, string> _rules = new(StringComparer.OrdinalIgnoreCase);
-    private string _defaultKeymap = "DEF";
-    private string? _lastAppliedKeymap;
+    private Dictionary<string, KeymapLayerTarget> _rules = new(StringComparer.OrdinalIgnoreCase);
+    private KeymapLayerTarget _defaultTarget = new("DEF", SettingsValidator.DefaultLayer);
+    private KeymapLayerTarget? _lastAppliedTarget;
 
     public KeymapRoutingService(AppConfig config)
     {
@@ -26,36 +26,38 @@ public sealed class KeymapRoutingService
 
         lock (_sync)
         {
-            _defaultKeymap = validation.NormalizedConfig.DefaultKeymap;
+            _defaultTarget = new KeymapLayerTarget(
+                validation.NormalizedConfig.DefaultKeymap,
+                SettingsValidator.DefaultLayer);
             _rules = validation.NormalizedConfig.Rules.ToDictionary(
                 rule => rule.ProcessName,
-                rule => rule.Keymap,
+                rule => new KeymapLayerTarget(rule.Keymap, rule.Layer),
                 StringComparer.OrdinalIgnoreCase);
         }
     }
 
-    public bool ShouldSwitch(string? activeProcessName, out string targetKeymap)
+    public bool ShouldSwitch(string? activeProcessName, out KeymapLayerTarget target)
     {
         lock (_sync)
         {
-            targetKeymap = ResolveTargetKeymapLocked(activeProcessName);
-            return !string.Equals(_lastAppliedKeymap, targetKeymap, StringComparison.OrdinalIgnoreCase);
+            target = ResolveTargetLocked(activeProcessName);
+            return !Equals(_lastAppliedTarget, target);
         }
     }
 
-    public string ResolveTargetKeymap(string? activeProcessName)
+    public KeymapLayerTarget ResolveTarget(string? activeProcessName)
     {
         lock (_sync)
         {
-            return ResolveTargetKeymapLocked(activeProcessName);
+            return ResolveTargetLocked(activeProcessName);
         }
     }
 
-    public void MarkSwitched(string keymapAbbreviation)
+    public void MarkSwitched(KeymapLayerTarget target)
     {
         lock (_sync)
         {
-            _lastAppliedKeymap = SettingsValidator.NormalizeKeymap(keymapAbbreviation);
+            _lastAppliedTarget = NormalizeTarget(target);
         }
     }
 
@@ -63,19 +65,32 @@ public sealed class KeymapRoutingService
     {
         lock (_sync)
         {
-            _lastAppliedKeymap = null;
+            _lastAppliedTarget = null;
         }
     }
 
-    private string ResolveTargetKeymapLocked(string? activeProcessName)
+    private KeymapLayerTarget ResolveTargetLocked(string? activeProcessName)
     {
         var normalizedProcessName = SettingsValidator.NormalizeProcessName(activeProcessName);
         if (!string.IsNullOrWhiteSpace(normalizedProcessName) &&
-            _rules.TryGetValue(normalizedProcessName, out var mappedKeymap))
+            _rules.TryGetValue(normalizedProcessName, out var mappedTarget))
         {
-            return mappedKeymap;
+            return mappedTarget;
         }
 
-        return _defaultKeymap;
+        return _defaultTarget;
+    }
+
+    private static KeymapLayerTarget NormalizeTarget(KeymapLayerTarget target)
+    {
+        var layer = SettingsValidator.NormalizeLayer(target.Layer);
+        if (string.IsNullOrWhiteSpace(layer))
+        {
+            layer = SettingsValidator.DefaultLayer;
+        }
+
+        return new KeymapLayerTarget(
+            SettingsValidator.NormalizeKeymap(target.Keymap),
+            layer);
     }
 }

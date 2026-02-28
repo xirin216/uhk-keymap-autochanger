@@ -80,7 +80,7 @@ internal sealed class SettingsForm : Form
 
         var rulesLabel = new Label
         {
-            Text = "Rules (processName -> keymap):",
+            Text = "Rules (processName -> keymap + layer):",
             Dock = DockStyle.Top,
             AutoSize = true,
         };
@@ -100,6 +100,15 @@ internal sealed class SettingsForm : Form
             Name = "Keymap",
             HeaderText = "Keymap Abbreviation (e.g. DEV)",
         });
+        var layerColumn = new DataGridViewComboBoxColumn
+        {
+            Name = "Layer",
+            HeaderText = "Layer (e.g. base, fn, mod)",
+            FlatStyle = FlatStyle.Flat,
+        };
+        layerColumn.Items.AddRange(SettingsValidator.SupportedLayers.Cast<object>().ToArray());
+        _rulesGrid.Columns.Add(layerColumn);
+        _rulesGrid.DefaultValuesNeeded += (_, e) => e.Row.Cells["Layer"].Value = SettingsValidator.DefaultLayer;
 
         rulesPanel.Controls.Add(_rulesGrid);
         rulesPanel.Controls.Add(rulesLabel);
@@ -153,7 +162,7 @@ internal sealed class SettingsForm : Form
         _rulesGrid.Rows.Clear();
         foreach (var rule in config.Rules)
         {
-            _rulesGrid.Rows.Add(rule.ProcessName, rule.Keymap);
+            _rulesGrid.Rows.Add(rule.ProcessName, rule.Keymap, rule.Layer);
         }
     }
 
@@ -197,8 +206,9 @@ internal sealed class SettingsForm : Form
 
             var processName = (row.Cells[0].Value?.ToString() ?? string.Empty).Trim();
             var keymap = (row.Cells[1].Value?.ToString() ?? string.Empty).Trim();
+            var layer = (row.Cells[2].Value?.ToString() ?? string.Empty).Trim();
 
-            if (processName.Length == 0 && keymap.Length == 0)
+            if (processName.Length == 0 && keymap.Length == 0 && layer.Length == 0)
             {
                 continue;
             }
@@ -207,6 +217,7 @@ internal sealed class SettingsForm : Form
             {
                 ProcessName = processName,
                 Keymap = keymap,
+                Layer = layer,
             });
         }
 

@@ -114,3 +114,31 @@ dotnet publish .\src\UhkKeymapAutochanger\UhkKeymapAutochanger.csproj `
 
 출력 경로:
 - `src\UhkKeymapAutochanger\bin\Release\net8.0-windows\win-x64\publish\UhkKeymapAutochanger.exe`
+
+## Keymap + Layer 업데이트 (2026-03)
+
+- 프로세스 규칙이 이제 `keymap + layer` 조합을 지원합니다.
+- 미매칭 프로세스 fallback은 `defaultKeymap + base`입니다.
+- 레이어 전환은 HID `ExecMacroCommand (0x14)` 경로로 `toggleLayer <layer>`를 사용합니다.
+
+설정 예시:
+
+```json
+{
+  "defaultKeymap": "DEF",
+  "pollIntervalMs": 250,
+  "startWithWindows": true,
+  "pauseWhenUhkAgentRunning": true,
+  "rules": [
+    { "processName": "Code.exe", "keymap": "DEV", "layer": "fn" },
+    { "processName": "chrome.exe", "keymap": "WEB", "layer": "base" }
+  ]
+}
+```
+
+`layer` 허용값:
+- `base, fn, mod, mouse, fn2, fn3, fn4, fn5, alt, shift, super, ctrl`
+
+호환성:
+- 기존 `rules[].keymap`만 있는 설정도 동작합니다.
+- `rules[].layer`가 없거나 비어 있으면 `base`로 자동 처리됩니다.

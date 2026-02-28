@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using UhkKeymapAutochanger.Core.Models;
 using UhkKeymapAutochanger.Core.Services;
+using UhkKeymapAutochanger.Core.Settings;
 using UhkKeymapAutochanger.Diagnostics;
 
 namespace UhkKeymapAutochanger.Services;
@@ -108,13 +109,20 @@ internal sealed class KeymapSwitchingService : IDisposable
                 return;
             }
 
-            await _transport.SwitchKeymapAsync(targetKeymap);
+            await _transport.SwitchKeymapAsync(targetKeymap.Keymap);
+
+            if (!string.Equals(targetKeymap.Layer, SettingsValidator.DefaultLayer, StringComparison.Ordinal))
+            {
+                await _transport.ExecuteMacroCommandAsync($"toggleLayer {targetKeymap.Layer}");
+            }
+
             _routingService.MarkSwitched(targetKeymap);
-            _logger.Log($"Switched keymap to '{targetKeymap}' for process '{processName}'.");
+            _logger.Log(
+                $"Switched target to keymap='{targetKeymap.Keymap}', layer='{targetKeymap.Layer}' for process '{processName}'.");
         }
         catch (Exception ex)
         {
-            _logger.Log($"Failed to switch keymap for process '{processName}': {ex.Message}");
+            _logger.Log($"Failed to switch target for process '{processName}': {ex.Message}");
         }
         finally
         {
