@@ -5,6 +5,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <ApplicationIcon>Assets\uhk.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

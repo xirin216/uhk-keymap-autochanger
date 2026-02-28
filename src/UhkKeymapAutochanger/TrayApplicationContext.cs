@@ -61,7 +61,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = LoadTrayIcon(),
             Text = "UHK Keymap Autochanger",
             ContextMenuStrip = contextMenu,
             Visible = true,
@@ -171,5 +171,17 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _suppressStartWithWindowsCheckedChanged = true;
         _startWithWindowsMenuItem.Checked = enabled;
         _suppressStartWithWindowsCheckedChanged = false;
+    }
+
+    private static Icon LoadTrayIcon()
+    {
+        try
+        {
+            return Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
+        }
+        catch
+        {
+            return SystemIcons.Application;
+        }
     }
 }
