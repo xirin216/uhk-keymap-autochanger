@@ -44,3 +44,4 @@ _ReSharper*/
 .DS_Store
 Thumbs.db
 Desktop.ini
+dist/
