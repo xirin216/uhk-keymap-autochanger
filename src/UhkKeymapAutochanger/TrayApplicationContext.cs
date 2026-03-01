@@ -18,6 +18,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly UhkHidTransport _hidTransport;
     private readonly KeymapSwitchingService _switchingService;
     private readonly NotifyIcon _notifyIcon;
+    private readonly ToolStripMenuItem _statusMenuItem;
     private readonly ToolStripMenuItem _toggleSwitchingMenuItem;
     private readonly ToolStripMenuItem _startWithWindowsMenuItem;
 
@@ -44,8 +45,15 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _hidTransport,
             _logger,
             _config.PauseWhenUhkAgentRunning);
+        _switchingService.StatusChanged += OnSwitchingStatusChanged;
 
         var contextMenu = new ContextMenuStrip();
+        _statusMenuItem = new ToolStripMenuItem("Status: Initializing...")
+        {
+            Enabled = false,
+        };
+        contextMenu.Items.Add(_statusMenuItem);
+        contextMenu.Items.Add(new ToolStripSeparator());
         contextMenu.Items.Add(new ToolStripMenuItem("Open Settings", null, (_, _) => OpenSettings()));
         _toggleSwitchingMenuItem = new ToolStripMenuItem("Stop Switching", null, (_, _) => ToggleSwitching());
         contextMenu.Items.Add(_toggleSwitchingMenuItem);
@@ -74,6 +82,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     protected override void ExitThreadCore()
     {
+        _switchingService.StatusChanged -= OnSwitchingStatusChanged;
         _switchingService.Stop();
         _switchingService.Dispose();
         _hidTransport.Dispose();
@@ -183,5 +192,26 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             return SystemIcons.Application;
         }
+    }
+
+    private void OnSwitchingStatusChanged(object? sender, string status)
+    {
+        if (_notifyIcon.ContextMenuStrip is null || _notifyIcon.ContextMenuStrip.IsDisposed)
+        {
+            return;
+        }
+
+        void Update()
+        {
+            _statusMenuItem.Text = $"Status: {status}";
+        }
+
+        if (_notifyIcon.ContextMenuStrip.InvokeRequired)
+        {
+            _notifyIcon.ContextMenuStrip.BeginInvoke((MethodInvoker)Update);
+            return;
+        }
+
+        Update();
     }
 }
