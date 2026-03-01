@@ -6,12 +6,13 @@ namespace UhkKeymapAutochanger.UI;
 internal sealed class SettingsForm : Form
 {
     private readonly TextBox _defaultKeymapTextBox = new();
+    private readonly TextBox _runtimeStatusTextBox = new();
     private readonly NumericUpDown _pollIntervalNumeric = new();
     private readonly CheckBox _startWithWindowsCheckBox = new();
     private readonly CheckBox _pauseWhenAgentRunningCheckBox = new();
     private readonly DataGridView _rulesGrid = new();
 
-    public SettingsForm(AppConfig config)
+    public SettingsForm(AppConfig config, string initialRuntimeStatus)
     {
         Text = "UHK Keymap Autochanger Settings";
         StartPosition = FormStartPosition.CenterScreen;
@@ -36,7 +37,7 @@ internal sealed class SettingsForm : Form
             Dock = DockStyle.Top,
             AutoSize = true,
             ColumnCount = 2,
-            RowCount = 4,
+            RowCount = 5,
         };
         fieldsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
         fieldsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -71,6 +72,18 @@ internal sealed class SettingsForm : Form
         _pauseWhenAgentRunningCheckBox.AutoSize = true;
         _pauseWhenAgentRunningCheckBox.Anchor = AnchorStyles.Left;
         fieldsTable.Controls.Add(_pauseWhenAgentRunningCheckBox, 1, 3);
+
+        fieldsTable.Controls.Add(new Label
+        {
+            Text = "Runtime status",
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+        }, 0, 4);
+        _runtimeStatusTextBox.Dock = DockStyle.Fill;
+        _runtimeStatusTextBox.ReadOnly = true;
+        _runtimeStatusTextBox.TabStop = false;
+        _runtimeStatusTextBox.Text = initialRuntimeStatus;
+        fieldsTable.Controls.Add(_runtimeStatusTextBox, 1, 4);
 
         var rulesPanel = new Panel
         {
@@ -148,6 +161,11 @@ internal sealed class SettingsForm : Form
     }
 
     public AppConfig? SavedConfig { get; private set; }
+
+    public void UpdateRuntimeStatus(string status)
+    {
+        _runtimeStatusTextBox.Text = status;
+    }
 
     private void PopulateFromConfig(AppConfig config)
     {

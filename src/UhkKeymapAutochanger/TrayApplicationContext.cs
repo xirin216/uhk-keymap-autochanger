@@ -23,6 +23,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly ToolStripMenuItem _startWithWindowsMenuItem;
 
     private AppConfig _config;
+    private string _lastSwitchingStatus = "Initializing...";
     private bool _switchingEnabled = true;
     private bool _suppressStartWithWindowsCheckedChanged;
 
@@ -113,13 +114,42 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private void OpenSettings()
     {
-        using var form = new SettingsForm(_config);
-        if (form.ShowDialog() != DialogResult.OK || form.SavedConfig is null)
+        using var form = new SettingsForm(_config, _lastSwitchingStatus);
+        EventHandler<string>? statusHandler = (_, status) =>
         {
-            return;
-        }
+            if (form.IsDisposed || !form.IsHandleCreated)
+            {
+                return;
+            }
 
-        ApplyConfig(form.SavedConfig);
+            void UpdateStatus()
+            {
+                form.UpdateRuntimeStatus(status);
+            }
+
+            if (form.InvokeRequired)
+            {
+                form.BeginInvoke((MethodInvoker)UpdateStatus);
+                return;
+            }
+
+            UpdateStatus();
+        };
+
+        _switchingService.StatusChanged += statusHandler;
+        try
+        {
+            if (form.ShowDialog() != DialogResult.OK || form.SavedConfig is null)
+            {
+                return;
+            }
+
+            ApplyConfig(form.SavedConfig);
+        }
+        finally
+        {
+            _switchingService.StatusChanged -= statusHandler;
+        }
     }
 
     private void ApplyConfig(AppConfig config)
@@ -203,6 +233,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         void Update()
         {
+            _lastSwitchingStatus = status;
             _statusMenuItem.Text = $"Status: {status}";
         }
 
