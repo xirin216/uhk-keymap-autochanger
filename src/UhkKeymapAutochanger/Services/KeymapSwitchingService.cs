@@ -8,11 +8,16 @@ namespace UhkKeymapAutochanger.Services;
 
 internal sealed class KeymapSwitchingService : IDisposable
 {
+    private static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(2);
+
+    private readonly object _lifecycleSync = new();
     private readonly ForegroundProcessWatcher _foregroundProcessWatcher;
     private readonly KeymapRoutingService _routingService;
     private readonly IKeymapTransport _transport;
     private readonly IDebugLogger _logger;
     private readonly SemaphoreSlim _switchLock = new(1, 1);
+    private CancellationTokenSource? _retryCts;
+    private Task? _retryTask;
     private volatile bool _pauseWhenUhkAgentRunning;
     private volatile bool _running;
 
@@ -31,23 +36,65 @@ internal sealed class KeymapSwitchingService : IDisposable
         _foregroundProcessWatcher.ForegroundProcessChanged += OnForegroundProcessChanged;
     }
 
+    public event EventHandler<string>? StatusChanged;
+
     public void Start()
     {
-        if (_running)
+        lock (_lifecycleSync)
         {
-            return;
+            if (_running)
+            {
+                return;
+            }
+
+            _routingService.ResetState();
+            _running = true;
+            _foregroundProcessWatcher.Start();
+            _retryCts = new CancellationTokenSource();
+            _retryTask = Task.Run(() => RetryLoopAsync(_retryCts.Token));
         }
 
-        _routingService.ResetState();
-        _running = true;
-        _foregroundProcessWatcher.Start();
+        PublishStatus("Switching started.");
         _ = TrySwitchForCurrentProcessAsync();
     }
 
     public void Stop()
     {
-        _running = false;
+        CancellationTokenSource? retryCts;
+        Task? retryTask;
+
+        lock (_lifecycleSync)
+        {
+            if (!_running)
+            {
+                return;
+            }
+
+            _running = false;
+            retryCts = _retryCts;
+            retryTask = _retryTask;
+            _retryCts = null;
+            _retryTask = null;
+        }
+
         _foregroundProcessWatcher.Stop();
+        if (retryCts is not null)
+        {
+            retryCts.Cancel();
+            try
+            {
+                retryTask?.Wait(TimeSpan.FromSeconds(2));
+            }
+            catch (AggregateException ex) when (ex.InnerExceptions.All(x => x is TaskCanceledException))
+            {
+            }
+            finally
+            {
+                retryCts.Dispose();
+            }
+        }
+
+        PublishStatus("Switching stopped.");
     }
 
     public void ApplyConfig(AppConfig config)
@@ -61,6 +108,8 @@ internal sealed class KeymapSwitchingService : IDisposable
         {
             _ = TrySwitchForCurrentProcessAsync();
         }
+
+        PublishStatus("Config applied.");
     }
 
     public void Dispose()
@@ -106,6 +155,7 @@ internal sealed class KeymapSwitchingService : IDisposable
             if (_pauseWhenUhkAgentRunning && IsUhkAgentRunning())
             {
                 _logger.Log("Skipping keymap switch because UHK Agent is running.");
+                PublishStatus("Paused because UHK Agent is running.");
                 return;
             }
 
@@ -119,14 +169,34 @@ internal sealed class KeymapSwitchingService : IDisposable
             _routingService.MarkSwitched(targetKeymap);
             _logger.Log(
                 $"Switched target to keymap='{targetKeymap.Keymap}', layer='{targetKeymap.Layer}' for process '{processName}'.");
+            PublishStatus(
+                $"Applied keymap='{targetKeymap.Keymap}', layer='{targetKeymap.Layer}' for '{processName}'.");
         }
         catch (Exception ex)
         {
             _logger.Log($"Failed to switch target for process '{processName}': {ex.Message}");
+            PublishStatus($"Switch failed for '{processName}': {ex.Message}");
         }
         finally
         {
             _switchLock.Release();
+        }
+    }
+
+    private async Task RetryLoopAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(RetryInterval, cancellationToken);
+            }
+            catch (TaskCanceledException)
+            {
+                break;
+            }
+
+            await TrySwitchForCurrentProcessAsync();
         }
     }
 
@@ -159,5 +229,10 @@ internal sealed class KeymapSwitchingService : IDisposable
     {
         var chars = processName.Where(char.IsLetterOrDigit).ToArray();
         return new string(chars).ToUpperInvariant();
+    }
+
+    private void PublishStatus(string message)
+    {
+        StatusChanged?.Invoke(this, message);
     }
 }
